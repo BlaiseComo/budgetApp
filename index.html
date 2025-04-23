@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Load Plaid Link SDK to initialize and manage account linking -->
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+
+  <!-- Load jQuery for DOM manipulation and AJAX calls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.3/jquery.min.js"></script>
+
+  <style>
+    /* Basic body styling: font, margin, and padding */
+    body { font-family: Arial; margin: 0; padding: 0; }
+
+    /* Styling for the top navigation bar */
+    nav { background: black; color: white; padding: 10px; gap: 10px; }
+
+    /* Styling for buttons inside the nav bar */
+    nav button { background: #444; color: white; border: none; padding: 10px; cursor: pointer; }
+
+    /* Each "page" section is hidden by default */
+    .page { display: none; padding: 20px; }
+
+    /* The currently active page is shown */
+    .active { display: block; }
+  </style>
+</head>
+<body>
+  <!-- Navigation bar with buttons to switch between views -->
+  <nav>
+    <!-- Buttons trigger a JS function to switch views -->
+    <button onclick="showPage('dashboard')">Dashboard</button>
+    <button onclick="showPage('accounts')">Accounts</button>
+    <!-- <button onclick="showPage('transactions')">Transactions</button> -->
+  </nav>
+
+  <!-- Dashboard view section -->
+  <div id="dashboard" class="page active">
+    <h2>Dashboard</h2>
+    <p>Welcome to your financial dashboard!</p>
+    <div id="dashboard-data"></div> <!-- Placeholder for injected dashboard info -->
+  </div>
+  
+  <!-- Accounts view section -->
+  <div id="accounts" class="page">
+    <h2>Accounts</h2>
+    <div id="accounts-data"></div> <!-- Placeholder for injected accounts info -->
+  </div>
+
+  <!-- Transactions view section -->
+  <div id="transactions" class="page">
+    <h2>Transactions</h2>
+    <div id="transactions-data"></div> <!-- Placeholder for injected transactions info -->
+  </div>
+
+  <script>
+    // Function to toggle visibility of each section/page
+    function showPage(pageId) {
+      $('.page').removeClass('active'); // Hide all sections
+      $('#' + pageId).addClass('active'); // Show selected section
+    }
+
+    // Immediately invoked async function using jQuery
+    (async ($) => {
+      // Fetch a link_token from the backend to initialize Plaid Link
+      const fetchLinkToken = async () => {
+        const response = await fetch('/create-link-token');
+        const { linkToken } = await response.json();
+        return linkToken;
+      };
+
+      // Create the Plaid Link handler
+      const handler = Plaid.create({
+        token: await fetchLinkToken(), // Use the generated link_token
+        onSuccess: async (publicToken, metadata) => {
+          // Called when user successfully links an account
+          // Exchange the public_token for an access_token via the backend
+          const res = await fetch('/token-exchange', {
+            method: 'POST',
+            body: JSON.stringify({ publicToken }),
+            headers: { 'Content-Type': 'application/json' },
+          });
+
+          if (res.ok) {
+            const data = await res.json(); // Receive Plaid data (auth, identity, etc.)
+            displayAccountData(data); // Render the data in the UI
+          }
+        },
+        // Optional: log events for debugging or analytics
+        onEvent: (metadata) => console.log('Plaid Event:', metadata),
+
+        // Optional: handle exit gracefully
+        onExit: (error, metadata) => console.log('Plaid Exit:', error, metadata),
+      });
+
+      // Automatically open Plaid Link on page load
+      handler.open();
+
+      // Display account and user identity information in the UI
+      function displayAccountData(data) {
+        const { accounts, item, numbers, identity } = data;
+
+        // --- Populate the Accounts Page ---
+        const accountList = accounts.map(acct => `
+          <div>
+            <h3>${acct.name} (${acct.subtype})</h3>
+            <p><strong>Balance:</strong> $${acct.balances.current}</p>
+            <p><strong>Available:</strong> $${acct.balances.available}</p>
+            <p><strong>Routing:</strong> ${getRouting(acct.account_id, numbers)}</p>
+            <p><strong>Account Number:</strong> ${getAccountNum(acct.account_id, numbers)}</p>
+          </div><hr>
+        `).join('');
+        $('#accounts-data').html(accountList); // Insert into accounts section
+
+        // --- Populate the Dashboard Summary ---
+        const total = accounts.reduce((sum, a) => sum + (a.balances.current || 0), 0);
+        $('#dashboard-data').html(`
+          <h3>Total Current Balance: $${total}</h3>
+          <p><strong>Institution:</strong> ${item.institution_name}</p>
+          <p><strong>Account Holder:</strong> ${identity.accounts[0].owners[0].names[0]}</p>
+          <p><strong>Email:</strong> ${identity.accounts[0].owners[0].emails[0].data}</p>
+        `);
+      }
+
+      // Utility: get the routing number for a specific account ID
+      function getRouting(accountId, numbers) {
+        const acct = numbers.ach.find(a => a.account_id === accountId);
+        return acct ? acct.routing : 'N/A';
+      }
+
+      // Utility: get the account number for a specific account ID
+      function getAccountNum(accountId, numbers) {
+        const acct = numbers.ach.find(a => a.account_id === accountId);
+        return acct ? acct.account : 'N/A';
+      }
+
+    })(jQuery); // Pass in jQuery explicitly
+  </script>
+
+</body>
+</html>
