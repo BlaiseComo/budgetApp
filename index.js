@@ -7,6 +7,8 @@ const bodyParser = require('body-parser');
 const util = require('util');
 const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
 
+let SAVED_ACCESS_TOKEN = null;
+
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -36,7 +38,7 @@ app.get('/create-link-token', async (req, res) => {
     const response = await plaidClient.linkTokenCreate({
       user: { client_user_id: 'unique-user-id' },
       client_name: 'App of Tyler',
-      products: ['auth', 'identity'],
+      products: ['auth', 'identity', 'transactions'],
       country_codes: ['US'],
       language: 'en',
     });
@@ -56,6 +58,7 @@ app.post('/token-exchange', async (req, res) => {
     // Exchange token
     const tokenResponse = await plaidClient.itemPublicTokenExchange({ public_token: publicToken });
     const accessToken = tokenResponse.data.access_token;
+    SAVED_ACCESS_TOKEN = tokenResponse.data.access_token;
 
     // Fetch Auth
     const authResponse = await plaidClient.authGet({ access_token: accessToken });
@@ -82,6 +85,29 @@ app.post('/token-exchange', async (req, res) => {
   } catch (err) {
     console.error('Token exchange or data fetch failed:', err.response?.data || err.message);
     res.status(500).json({ error: 'Failed to exchange token or fetch data' });
+  }
+});
+
+app.get('/transactions', async (req, res) => {
+  try {
+    if (!SAVED_ACCESS_TOKEN) {
+      return res.status(400).json({ error: 'No access token available.' });
+    }
+
+    const startDate = '2000-01-01';
+    const endDate = '2025-04-23';
+
+    const txResponse = await plaidClient.transactionsGet({
+      access_token: SAVED_ACCESS_TOKEN,
+      start_date: startDate,
+      end_date: endDate,
+      options: {count: 100, offset: 0}
+    });
+
+    res.json({ transactions: txResponse.data.transactions });
+  } catch (err) {
+    console.error('Error fetching transactions:', err);
+    res.status(500).json({error: 'Could not fetch transactions' });
   }
 });
 

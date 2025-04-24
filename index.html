@@ -30,13 +30,14 @@
     <!-- Buttons trigger a JS function to switch views -->
     <button onclick="showPage('dashboard')">Dashboard</button>
     <button onclick="showPage('accounts')">Accounts</button>
+    <button onclick="showPage('transactions')">Transactions</button>
     <!-- <button onclick="showPage('transactions')">Transactions</button> -->
   </nav>
 
   <!-- Dashboard view section -->
   <div id="dashboard" class="page active">
     <h2>Dashboard</h2>
-    <p>Welcome to your financial dashboard!</p>
+    <p>Welcome to your financial dashboard</p>
     <div id="dashboard-data"></div> <!-- Placeholder for injected dashboard info -->
   </div>
   
@@ -83,6 +84,7 @@
           if (res.ok) {
             const data = await res.json(); // Receive Plaid data (auth, identity, etc.)
             displayAccountData(data); // Render the data in the UI
+            loadTransactions()
           }
         },
         // Optional: log events for debugging or analytics
@@ -119,6 +121,29 @@
           <p><strong>Account Holder:</strong> ${identity.accounts[0].owners[0].names[0]}</p>
           <p><strong>Email:</strong> ${identity.accounts[0].owners[0].emails[0].data}</p>
         `);
+      }
+
+      async function loadTransactions() {
+        try {
+        const res = await fetch('/transactions');
+        if (!res.ok) {
+          console.error('Transactions fetch failed:', await res.text());
+          return;
+        }
+        const { transactions } = await res.json();
+    
+        const list = transactions.map(tx => `
+          <div>
+            <p><strong>${tx.date}</strong><br>${tx.name}</p>
+            <p>Amount: $${tx.amount.toFixed(2)}</p>
+            <hr>
+        </div>
+        `).join('');
+        $('#transactions-data').html(list);
+
+      } catch (err) {
+          console.error('loadTransactions error:', err);
+        }
       }
 
       // Utility: get the routing number for a specific account ID
