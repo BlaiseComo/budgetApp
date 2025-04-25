@@ -1,4 +1,7 @@
-# Plaid Quickstart Workshop
+# Budget App
+
+This application was created using the existing QuickStart guide located here.
+https://github.com/tylerjnap/plaid-quickstart-workshop
 
 ## Local Development
 
@@ -14,14 +17,14 @@ This repo utilizes [npm](https://www.npmjs.com/) to build, run, and test the app
 $ npm install
 ```
 
-Create a `.env` in the root directory of this repo and add your client ID and secret found [here in Plaid's dashboard](https://dashboard.plaid.com/team/keys)
+Create a file called `.env` in the root directory of this repo. The Client ID and Secret ID come from Plaid's dashboard found [here](https://dashboard.plaid.com/team/keys)
 
 ```
 CLIENT_ID = 'INSERT_CLIENT_ID'
 SECRET = 'INSERT_SECRET'
 ```
 
-Start app and navigate to `localhost:3000`:
+Start app using the following and navigate to `localhost:3000`:
 
 ```
 npm start
