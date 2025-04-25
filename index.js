@@ -7,7 +7,7 @@ const bodyParser = require('body-parser');
 const util = require('util');
 const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
 
-let SAVED_ACCESS_TOKEN = null;
+let SAVED_ACCESS_TOKEN = null; // Only actually used in app.get(/transactions)
 
 const PORT = process.env.PORT || 3000;
 
@@ -38,7 +38,7 @@ app.get('/create-link-token', async (req, res) => {
     const response = await plaidClient.linkTokenCreate({
       user: { client_user_id: 'unique-user-id' },
       client_name: 'App of Tyler',
-      products: ['auth', 'identity', 'transactions'],
+      products: ['auth', 'identity', 'transactions'], // 'transactions' was added to the products list
       country_codes: ['US'],
       language: 'en',
     });
@@ -88,12 +88,16 @@ app.post('/token-exchange', async (req, res) => {
   }
 });
 
+// New function to pull the transactions
 app.get('/transactions', async (req, res) => {
-  try {
+  try { // Makes sure the access token is valid
     if (!SAVED_ACCESS_TOKEN) {
       return res.status(400).json({ error: 'No access token available.' });
     }
 
+    // Pulls transactions from these dates
+    // Tried to make the dates more dynamic and have the user choose them,
+    // but I wasn't able to get this functionality working in time so I reset to previous commit
     const startDate = '2000-01-01';
     const endDate = '2025-04-23';
 
@@ -101,7 +105,7 @@ app.get('/transactions', async (req, res) => {
       access_token: SAVED_ACCESS_TOKEN,
       start_date: startDate,
       end_date: endDate,
-      options: {count: 100, offset: 0}
+      options: {count: 100, offset: 0} // Pulls up to 100 transactions
     });
 
     res.json({ transactions: txResponse.data.transactions });

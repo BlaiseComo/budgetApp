@@ -123,25 +123,28 @@
         `);
       }
 
+      // Transactions Page
       async function loadTransactions() {
+        // Try/catch to make sure transactions load properly
         try {
         const res = await fetch('/transactions');
-        if (!res.ok) {
+        if (!res.ok) { // Makes sure transactions were fetched
           console.error('Transactions fetch failed:', await res.text());
           return;
         }
         const { transactions } = await res.json();
     
-        const list = transactions.map(tx => `
-          <div>
-            <p><strong>${tx.date}</strong><br>${tx.name}</p>
+        // Format for each transaction in HTML
+        const list = transactions.map(tx => ` 
+        <div>
+            <p><strong>${tx.date}</strong><br>${tx.name}</p> 
             <p>Amount: $${tx.amount.toFixed(2)}</p>
             <hr>
         </div>
         `).join('');
         $('#transactions-data').html(list);
 
-      } catch (err) {
+      } catch (err) { // Engages if loadTransactions doesn't execute properly
           console.error('loadTransactions error:', err);
         }
       }
